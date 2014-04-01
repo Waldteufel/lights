@@ -1,0 +1,5 @@
+requirements: gstreamer, python3, numpy, scipy
+
+current plugins:
+	frequencyvis: frequency as x-axis
+	semitonevis:  pitch as x-axis
