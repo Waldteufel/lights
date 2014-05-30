@@ -9,15 +9,14 @@ def get_class(t, k):
     element_class.__class__ = k
     return element_class
 
-XR = 80
-YR = 16
+XR = 25
 
 class SemitoneVis(GstBase.BaseTransform):
 
     def __init__(self):
         GstBase.BaseTransform.__init__(self)
-        self.obuf_array = bytearray(3*XR*YR)
-        self.obuf = np.ndarray(shape=(YR, XR, 3), buffer=self.obuf_array, dtype='uint8')
+        self.obuf_array = bytearray(3*XR)
+        self.obuf = np.ndarray(shape=3*XR, buffer=self.obuf_array, dtype='uint8')
 
     def my_stft(self, signal, n):
         res = abs(np.fft.rfft(signal[-n:] * self.windows[n])[1:])
@@ -36,6 +35,7 @@ class SemitoneVis(GstBase.BaseTransform):
             self.freqs[2**i] = np.fft.rfftfreq(2**i, 1/self.rate)
 
         self.bin_buf = np.zeros(dtype='float64', shape=75)
+
         return True
 
     def do_transform_caps(self, direction, caps, flt):
@@ -44,7 +44,7 @@ class SemitoneVis(GstBase.BaseTransform):
         elif direction == Gst.PadDirection.SINK:
             ok, rate = caps.get_structure(0).get_int('rate')
             if ok:
-                return Gst.caps_from_string('video/x-raw, format=RGB, width={}, height={}, framerate=1/{}'.format(XR, YR, 50))
+                return Gst.caps_from_string('video/x-raw, format=RGB, width={}, height={}, framerate=1/{}'.format(25, 1, 25))
             else:
                 return Gst.caps_from_string('video/x-raw')
 
@@ -63,20 +63,17 @@ class SemitoneVis(GstBase.BaseTransform):
             tmp[:C] = 0
             bins += tmp[(f / 2**k).astype(int)]
 
-        bins = bins[-75:]
+        bins = bins[:75]
 
-        bins = np.where(bins > 1.25*self.bin_buf, bins, np.where(bins < 0.95*self.bin_buf, 0.95*self.bin_buf, self.bin_buf))
+        bins = np.where(bins > 1.25*self.bin_buf, bins, np.where(bins < 0.75*self.bin_buf, 0.95*self.bin_buf, self.bin_buf))
         self.bin_buf[:] = bins
 
         self.upper = 0.995 * self.upper + 0.005 * max(bins)
         if self.upper != 0:
             bins /= self.upper
 
-        for y in range(YR):
-            v = (bins - y/(YR-1))
-            self.obuf[YR-y-1,:75,1] = np.where(v >= 0, np.exp(-v) * 128 + 127, 0)
-            #self.obuf[YR-y-1,:12,1] = np.where(v >= 0, np.exp(-v) * 128 + 127, 0)
-            #self.obuf[YR-y-1,12:,1] = self.obuf[YR-y-1,:12,1]
+        self.obuf[:75] = 50 + np.clip(bins, 0, 1) * 200
+        #print('OUT', self.obuf)
 
         gst_obuf.fill(0, memoryview(self.obuf_array))
         return Gst.FlowReturn.OK
