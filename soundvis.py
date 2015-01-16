@@ -10,13 +10,16 @@ READ_FRAMES = 1764
 RATE = 44100
 
 pa = pyaudio.PyAudio()
-stream = pa.open(format=pyaudio.paInt16, channels=1, rate=RATE, input=True, input_device_index=None, frames_per_buffer=READ_FRAMES)
+stream = pa.open(format=pyaudio.paInt16, channels=1, rate=RATE,
+                 input=True, input_device_index=None,
+                 frames_per_buffer=READ_FRAMES)
 dmx = artdmx.Client(75, 'localhost', universe=0x100)
 
 buf = np.zeros(dtype='float64', shape=2**15)
 upper = 1e-7
 windows = [scipy.signal.hann(2**i) for i in range(17)]
 bin_buf = np.zeros(dtype='float64', shape=75)
+
 
 def my_stft(signal, i):
     res = abs(np.fft.rfft(signal[-2**i:] * windows[i])[1:])
@@ -39,7 +42,8 @@ while True:
 
     bins = bins[:75]
 
-    bins = np.where(bins > 1.25*bin_buf, bins, np.where(bins < 0.75*bin_buf, 0.95*bin_buf, bin_buf))
+    bins = np.where(bins > 1.25*bin_buf, bins,
+                    np.where(bins < 0.75*bin_buf, 0.95*bin_buf, bin_buf))
     bin_buf[:] = bins
 
     upper = 0.995 * upper + 0.005 * max(bins)

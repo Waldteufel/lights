@@ -13,7 +13,8 @@ serv.bind(('', 6454))
 
 recv_buf = bytearray(b'\0' * (artdmx.HEADER.itemsize + MAXCH))
 recv_header = np.ndarray(shape=1, dtype=artdmx.HEADER, buffer=recv_buf)
-recv_values = np.ndarray(shape=MAXCH, dtype='u1', buffer=recv_buf, offset=artdmx.HEADER.itemsize)
+recv_values = np.ndarray(shape=MAXCH, dtype='u1', buffer=recv_buf,
+                         offset=artdmx.HEADER.itemsize)
 
 client = artdmx.Client(81, '172.31.97.40')
 
