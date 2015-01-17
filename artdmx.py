@@ -54,10 +54,12 @@ class Client(object):
 
 if __name__ == '__main__':
     import argparse
+    import re
 
-    parser = argparse.ArgumentParser(description='Send an ArtDMX packet')
-    parser.add_argument('values', metavar='V', type=int,
-                        nargs='+', help='channel values')
+    parser = argparse.ArgumentParser(description='Send an ArtDMX packet. ' +
+                                     'All unspecified values are set to zero.')
+    parser.add_argument('values', metavar='A:B=V', type=str,
+                        nargs='+', help='set values[A:B]=V')
     parser.add_argument('-u', '--universe', metavar='UNIV',
                         type=lambda x: int(x, 0), default=0,
                         help='universe id (default=0)')
@@ -66,10 +68,16 @@ if __name__ == '__main__':
                         help='server (default=localhost)')
     parser.add_argument('-p', '--port', metavar='PORT', type=int,
                         default=6454, help='udp port (default=6454)')
+    parser.add_argument('-l', '--length', metavar='N', default=255, type=int,
+                        help='send N channels (default=255)')
 
     args = parser.parse_args()
 
-    c = Client(len(args.values), args.server, args.port,
-               universe=args.universe)
-    c.values[:] = args.values
+    c = Client(args.length, args.server, args.port, universe=args.universe)
+    for val in args.values:
+        a, b, v = re.match('([-0-9]*):([-0-9]*)=([-0-9]+)', val).groups()
+        a = int(a) if a != '' else None
+        b = int(b) if b != '' else None
+        v = int(v, 0)
+        c.values[a:b] = v
     c.push()
