@@ -62,6 +62,8 @@ if __name__ == '__main__':
                         default=6454, help='udp port (default=6454)')
     parser.add_argument('-l', '--length', metavar='N', default=255, type=int,
                         help='send N channels (default=255)')
+    parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                        help='show values sent')
 
     args = parser.parse_args()
 
@@ -78,4 +80,7 @@ if __name__ == '__main__':
             v = int(v, 0)
             index = slice(a, b)
         c.values[index] = v
+
+    if args.verbose:
+        print(c.values)
     c.push()
