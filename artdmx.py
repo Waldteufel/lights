@@ -65,11 +65,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    VALUE_RE = re.compile('(?:([-0-9]+)|([-0-9]*):([-0-9]*))=([-0-9]+)')
+
     c = Client(args.length, args.server, args.port, universe=args.universe)
     for val in args.values:
-        a, b, v = re.match('([-0-9]*):([-0-9]*)=([-0-9]+)', val).groups()
-        a = int(a) if a != '' else None
-        b = int(b) if b != '' else None
-        v = int(v, 0)
-        c.values[a:b] = v
+        i, a, b, v = VALUE_RE.match(val).groups()
+        if i is not None:
+            index = int(i)
+        else:
+            a = int(a) if a != '' else None
+            b = int(b) if b != '' else None
+            v = int(v, 0)
+            index = slice(a, b)
+        c.values[index] = v
     c.push()
