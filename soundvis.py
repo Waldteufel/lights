@@ -13,7 +13,15 @@ pa = pyaudio.PyAudio()
 stream = pa.open(format=pyaudio.paInt16, channels=1, rate=RATE,
                  input=True, input_device_index=None,
                  frames_per_buffer=READ_FRAMES)
-dmx = artdmx.Client(75, 'localhost', universe=0x100)
+dmx = artdmx.Client(75, 'localhost')
+
+# send mask
+dmx.universe = 0x8100
+dmx.values[:] = 1
+dmx.push()
+
+# send values
+dmx.universe = 0x0100
 
 buf = np.zeros(dtype='float64', shape=2**15)
 upper = 1e-7

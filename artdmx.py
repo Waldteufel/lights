@@ -39,6 +39,14 @@ class Client(object):
     def values(self, values):
         self._values[:] = values
 
+    @property
+    def universe(self):
+        return int(self.header['universe'])
+
+    @universe.setter
+    def universe(self, universe):
+        self.header['universe'] = universe
+
     def push(self):
         self.socket.send(self.buf)
         self.header['sequence'] += 1
