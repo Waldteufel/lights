@@ -8,6 +8,8 @@ Lights
 
 `soundvis.py` grabs audio and outputs a visualization over ArtDMX
 
+`dmxdebug.py` shows rgb values of DMX channels
+
 
 ArtDMX Arbiter
 --------------
