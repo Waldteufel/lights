@@ -38,7 +38,7 @@ while True:
     if u >= 0x8000:
         masks[:, u & 0x7fff] = recv_values > 0
         heads[:] = np.argmax(masks, axis=1)
-        with open('/run/shm/dmxmasks', 'wb') as f:
+        with open('/dev/shm/dmxmasks', 'wb') as f:
             for i in range(UNIVERSES):
                 f.write(masks[:, i].choose('01'))
                 f.write(b'\n')
