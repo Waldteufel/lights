@@ -12,8 +12,8 @@ MAXCH = 75
 
 recv_buf = bytearray(b'\0' * (artdmx.HEADER.itemsize + MAXCH))
 recv_header = np.ndarray(shape=1, dtype=artdmx.HEADER, buffer=recv_buf)
-recv_values = np.ndarray(shape=MAXCH, dtype='u1', buffer=recv_buf,
-                         offset=artdmx.HEADER.itemsize)
+recv_channels = np.ndarray(shape=MAXCH, dtype='u1', buffer=recv_buf,
+                           offset=artdmx.HEADER.itemsize)
 
 
 class MainWindow(Gtk.Window):
@@ -30,8 +30,9 @@ class MainWindow(Gtk.Window):
 
         for i in range(MAXCH//3):
             cr.save()
-            cr.set_source_rgb(recv_values[i*3+0]/255, recv_values[i*3+1]/255,
-                              recv_values[i*3+2]/255)
+            cr.set_source_rgb(recv_channels[i*3+0]/255,
+                              recv_channels[i*3+1]/255,
+                              recv_channels[i*3+2]/255)
             cr.rectangle(20*i, 0, 20, 20)
             cr.clip()
             cr.paint()

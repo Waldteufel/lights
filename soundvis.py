@@ -63,5 +63,5 @@ while True:
     if upper != 0:
         bins /= upper
 
-    dmx.values[:] = 50 + np.clip(bins, 0, 1) * 200
+    dmx.channels[:] = 50 + np.clip(bins, 0, 1) * 200
     dmx.push()

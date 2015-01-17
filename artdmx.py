@@ -28,16 +28,17 @@ class Client(object):
         self.header['sequence'] = 0
         self.header['universe'] = universe
         self.header['length'] = length
-        self._values = numpy.ndarray(shape=length, dtype='u1', buffer=self.buf,
-                                     offset=HEADER.itemsize)
+        self._channels = numpy.ndarray(shape=length, dtype='u1',
+                                       buffer=self.buf,
+                                       offset=HEADER.itemsize)
 
     @property
-    def values(self):
-        return self._values
+    def channels(self):
+        return self._channels
 
-    @values.setter
-    def values(self, values):
-        self._values[:] = values
+    @channels.setter
+    def channels(self, channels):
+        self._channels[:] = channels
 
     def push(self):
         self.socket.send(self.buf)
@@ -49,9 +50,9 @@ if __name__ == '__main__':
     import re
 
     parser = argparse.ArgumentParser(description='Send an ArtDMX packet. ' +
-                                     'All unspecified values are set to zero.')
-    parser.add_argument('values', metavar='A:B=V', type=str,
-                        nargs='+', help='set values[A:B]=V')
+                                     'Unspecified channels are set to zero.')
+    parser.add_argument('chanspec', type=str, nargs='+',
+                        help='specified in format A:B=V or A=V')
     parser.add_argument('-u', '--universe', metavar='UNIV',
                         type=lambda x: int(x, 0), default=0,
                         help='universe id (default=0)')
@@ -67,11 +68,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    VALUE_RE = re.compile('(?:([-0-9]+)|([-0-9]*):([-0-9]*))=([-0-9]+)')
+    CHANSPEC_RE = re.compile('(?:([-0-9]+)|([-0-9]*):([-0-9]*))=([-0-9]+)')
 
     c = Client(args.length, args.server, args.port, universe=args.universe)
-    for val in args.values:
-        i, a, b, v = VALUE_RE.match(val).groups()
+    for val in args.chanspec:
+        i, a, b, v = CHANSPEC_RE.match(val).groups()
         if i is not None:
             index = int(i)
         else:
@@ -79,8 +80,8 @@ if __name__ == '__main__':
             b = int(b) if b != '' else None
             v = int(v, 0)
             index = slice(a, b)
-        c.values[index] = v
+        c.channels[index] = v
 
     if args.verbose:
-        print(c.values)
+        print(c.channels)
     c.push()

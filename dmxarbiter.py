@@ -13,8 +13,8 @@ serv.bind(('', 6454))
 
 recv_buf = bytearray(b'\0' * (artdmx.HEADER.itemsize + MAXCH))
 recv_header = np.ndarray(shape=1, dtype=artdmx.HEADER, buffer=recv_buf)
-recv_values = np.ndarray(shape=MAXCH, dtype='u1', buffer=recv_buf,
-                         offset=artdmx.HEADER.itemsize)
+recv_channels = np.ndarray(shape=MAXCH, dtype='u1', buffer=recv_buf,
+                           offset=artdmx.HEADER.itemsize)
 
 client = artdmx.Client(81, '172.31.97.40')
 
@@ -29,14 +29,14 @@ mapping = np.concatenate((
 masks = np.zeros(shape=(MAXCH, UNIVERSES), dtype=bool)
 heads = np.zeros(shape=MAXCH, dtype='u2')
 
-values = np.zeros(shape=MAXCH, dtype='u1')
+channels = np.zeros(shape=MAXCH, dtype='u1')
 
 while True:
     serv.recv_into(recv_buf)
     u = int(recv_header['universe'])
 
     if u >= 0x8000:
-        masks[:, u & 0x7fff] = recv_values > 0
+        masks[:, u & 0x7fff] = recv_channels > 0
         heads[:] = np.argmax(masks, axis=1)
         with open('/dev/shm/dmxmasks', 'wb') as f:
             for i in range(UNIVERSES):
@@ -44,6 +44,6 @@ while True:
                 f.write(b'\n')
     else:
         m = (heads == u)
-        values[m] = recv_values[m]
-        client.values[mapping] = values
+        channels[m] = recv_channels[m]
+        client.channels[mapping] = channels
         client.push()
