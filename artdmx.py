@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Send an ArtDMX packet. ' +
                                      'Unspecified channels are set to zero.')
     parser.add_argument('chanspec', type=str, nargs='+',
-                        help='specified in format A:B=V or A=V')
+                        help='specified as start:stop:step=V or index=V')
     parser.add_argument('-u', '--universe', metavar='UNIV',
                         type=lambda x: int(x, 0), default=0,
                         help='universe id (default=0)')
@@ -68,19 +68,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    CHANSPEC_RE = re.compile('(?:([-0-9]+)|([-0-9]*):([-0-9]*))=([-0-9]+)')
+    CHANSPEC_RE = re.compile('([-0-9]*)(?::([-0-9]*))?(?::([-0-9]*))?=(.*)')
 
     c = Client(args.length, args.server, args.port, universe=args.universe)
     for val in args.chanspec:
-        i, a, b, v = CHANSPEC_RE.match(val).groups()
-        if i is not None:
-            index = int(i)
+        start, stop, step, value = CHANSPEC_RE.match(val).groups()
+        value = int(value, 0)
+        if stop is None:
+            index = int(start)
         else:
-            a = int(a) if a != '' else None
-            b = int(b) if b != '' else None
-            v = int(v, 0)
-            index = slice(a, b)
-        c.channels[index] = v
+            start = int(start) if start != '' else None
+            stop = int(stop) if stop != '' else None
+            step = int(step) if step != '' else None
+            index = slice(start, stop, step)
+        c.channels[index] = value
 
     if args.verbose:
         print(c.channels)
