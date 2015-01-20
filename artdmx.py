@@ -77,9 +77,9 @@ if __name__ == '__main__':
         if stop is None:
             index = int(start)
         else:
-            start = int(start) if start != '' else None
-            stop = int(stop) if stop != '' else None
-            step = int(step) if step != '' else None
+            start = int(start) if start is not None and start != '' else None
+            stop = int(stop) if stop is not None and stop != '' else None
+            step = int(step) if step is not None and step != '' else None
             index = slice(start, stop, step)
         c.channels[index] = value
 

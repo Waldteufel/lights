@@ -33,7 +33,7 @@ class MainWindow(Gtk.Window):
             cr.set_source_rgb(recv_channels[i*3+0]/255,
                               recv_channels[i*3+1]/255,
                               recv_channels[i*3+2]/255)
-            cr.rectangle(20*i, 0, 20, 20)
+            cr.rectangle(40*i, 0, 40, 40)
             cr.clip()
             cr.paint()
             cr.restore()
