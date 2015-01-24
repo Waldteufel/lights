@@ -6,7 +6,7 @@ import artdmx
 import time
 
 MAXCH = 75
-UNIVERSES = 256
+UNIVERSES = 16
 
 serv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 serv.bind(('', 6454))
