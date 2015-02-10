@@ -5,7 +5,7 @@ import numpy as np
 import artdmx
 import time
 
-MAXCH = 75
+MAXCH = 76
 UNIVERSES = 16
 
 serv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -18,13 +18,20 @@ recv_channels = np.ndarray(shape=MAXCH, dtype='u1', buffer=recv_buf,
 
 client = artdmx.Client(81, '172.31.97.40')
 
-mapping = np.concatenate((
-    np.arange(49, 64),
-    np.arange(65, 80),
-    np.arange(1, 16),
-    np.arange(17, 32),
-    np.arange(33, 48),
-))
+# 75 color channels
+mapping = np.arange(0, 75)
+
+# insert a gap every 15 channels (16 channels control 3x5 color leds)
+mapping += np.arange(0, 75)//15
+
+# offset by 1 because the gap comes first
+mapping += 1
+
+# then rotate by 30 to start in the room corner
+mapping = np.roll(mapping, 30)
+
+# add the garden gnome as channel 75
+mapping = np.concatenate((mapping, [64]))
 
 masks = np.zeros(shape=(MAXCH, UNIVERSES), dtype=bool)
 heads = np.zeros(shape=MAXCH, dtype='u2')
