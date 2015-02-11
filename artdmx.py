@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # artdmx.py - ArtDMX client
 
+import re
 import socket
 import numpy
 
@@ -17,6 +18,9 @@ HEADER = numpy.dtype([
 
 
 class Client(object):
+
+    CHANSPEC_RE = re.compile('([-0-9]*)(?::([-0-9]*))?(?::([-0-9]*))?=(.*)')
+
     def __init__(self, length, host, port=6454, universe=0):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.connect((host, port))
@@ -44,10 +48,22 @@ class Client(object):
         self.socket.send(self.buf)
         self.header['sequence'] += 1
 
+    def parse(self, *chanspec):
+        for val in chanspec:
+            start, stop, step, value = self.CHANSPEC_RE.match(val).groups()
+            value = int(value, 0)
+            if stop is None:
+                index = int(start)
+            else:
+                start = int(start) if start is not None and start != '' else None
+                stop = int(stop) if stop is not None and stop != '' else None
+                step = int(step) if step is not None and step != '' else None
+                index = slice(start, stop, step)
+            self.channels[index] = value
+
 
 if __name__ == '__main__':
     import argparse
-    import re
 
     parser = argparse.ArgumentParser(description='Send an ArtDMX packet. ' +
                                      'Unspecified channels are set to zero.')
@@ -68,20 +84,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    CHANSPEC_RE = re.compile('([-0-9]*)(?::([-0-9]*))?(?::([-0-9]*))?=(.*)')
 
     c = Client(args.length, args.server, args.port, universe=args.universe)
-    for val in args.chanspec:
-        start, stop, step, value = CHANSPEC_RE.match(val).groups()
-        value = int(value, 0)
-        if stop is None:
-            index = int(start)
-        else:
-            start = int(start) if start is not None and start != '' else None
-            stop = int(stop) if stop is not None and stop != '' else None
-            step = int(step) if step is not None and step != '' else None
-            index = slice(start, stop, step)
-        c.channels[index] = value
+    c.parse(*args.chanspec)
 
     if args.verbose:
         print(c.channels)
