@@ -19,11 +19,11 @@ parser.add_argument('-p', '--port', metavar='PORT', default=6454, type=int,
 args = parser.parse_args()
 
 
-READ_FRAMES = 1764
+READ_FRAMES = 1764 // 2
 RATE = 44100
 
 pa = pyaudio.PyAudio()
-stream = pa.open(format=pyaudio.paInt16, channels=1, rate=RATE,
+stream = pa.open(format=pyaudio.paFloat32, channels=1, rate=RATE,
                  input=True, input_device_index=None,
                  frames_per_buffer=READ_FRAMES)
 dmx = artdmx.Client(75, args.server, args.port, universe=args.universe)
@@ -31,7 +31,10 @@ dmx = artdmx.Client(75, args.server, args.port, universe=args.universe)
 buf = np.zeros(dtype='float64', shape=2**15)
 upper = 1e-7
 windows = [scipy.signal.hann(2**i) for i in range(17)]
-bin_buf = np.zeros(dtype='float64', shape=75)
+freqs = 440 * 2 ** (np.arange(-3*12, 4*12)/12) * len(buf) / RATE
+
+bins = np.zeros(shape=7*12, dtype=np.float64)
+bin_buf = np.zeros(shape=7*12, dtype=np.float64)
 
 
 def my_stft(signal, i):
@@ -40,20 +43,16 @@ def my_stft(signal, i):
     return res
 
 while True:
-    ibuf = np.frombuffer(stream.read(READ_FRAMES), dtype='short') / 65535
+    ibuf = np.frombuffer(stream.read(READ_FRAMES), dtype='float32')
     buf[:-len(ibuf)] = buf[len(ibuf):]
     buf[-len(ibuf):] = ibuf
 
-    C = 20
-
-    bins = np.zeros(shape=7*12, dtype=np.float64)
-    f = 440 * 2 ** (np.arange(-3*12, 4*12)/12) * len(buf) / RATE
+    bins[:] = 0
     for k in range(0, 8):
         tmp = my_stft(buf, 15-k)
-        tmp[:C] = 0
-        bins += tmp[(f / 2**k).astype(int)]
-
-    bins = bins[:75]
+        tmp[:20] = 0  # cut off low frequencies
+        bins += tmp[(freqs / 2**k).astype(int)]
+    bins[75:] = 0  # ignore out-of-range channels
 
     bins = np.where(bins > 1.25*bin_buf, bins,
                     np.where(bins < 0.75*bin_buf, 0.95*bin_buf, bin_buf))
@@ -62,6 +61,7 @@ while True:
     upper = 0.995 * upper + 0.005 * max(bins)
     if upper != 0:
         bins /= upper
+    np.clip(bins, 0, 1, out=bins)
 
-    dmx.channels[:] = 50 + np.clip(bins, 0, 1) * 200
+    dmx.channels[:] = 50 + bins[:75] * 200
     dmx.push()
