@@ -52,5 +52,6 @@ while True:
                 f.write(b'\n')
     else:
         channels[:, u] = recv_channels
-        client.channels[mapping] = channels[RANGE, heads]
-        client.push()
+
+    client.channels[mapping] = channels[RANGE, heads]
+    client.push()
