@@ -28,13 +28,13 @@ stream = pa.open(format=pyaudio.paFloat32, channels=1, rate=RATE,
                  frames_per_buffer=READ_FRAMES)
 dmx = artdmx.Client(75, args.server, args.port, universe=args.universe)
 
-buf = np.zeros(dtype='float64', shape=2**15)
+buf = np.zeros(dtype=np.float32, shape=2**15)
 upper = 1e-7
 windows = [scipy.signal.hann(2**i) for i in range(17)]
 freqs = 440 * 2 ** (np.arange(-3*12, 4*12)/12) * len(buf) / RATE
 
-bins = np.zeros(shape=7*12, dtype=np.float64)
-bin_buf = np.zeros(shape=7*12, dtype=np.float64)
+bins = np.zeros(shape=7*12, dtype=np.float32)
+bin_buf = np.zeros(shape=7*12, dtype=np.float32)
 
 
 def my_stft(signal, i):
@@ -43,7 +43,7 @@ def my_stft(signal, i):
     return res
 
 while True:
-    ibuf = np.frombuffer(stream.read(READ_FRAMES), dtype='float32')
+    ibuf = np.frombuffer(stream.read(READ_FRAMES), dtype=np.float32)
     buf[:-len(ibuf)] = buf[len(ibuf):]
     buf[-len(ibuf):] = ibuf
 
