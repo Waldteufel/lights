@@ -7,6 +7,7 @@ import artdmx
 import socket
 import numpy as np
 import threading
+import signal
 
 MAXCH = 75
 
@@ -39,7 +40,6 @@ class MainWindow(Gtk.Window):
             cr.restore()
 
 
-import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 parser = argparse.ArgumentParser(description='Show ArtDMX RGB lights')

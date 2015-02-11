@@ -55,9 +55,9 @@ class Client(object):
             if stop is None:
                 index = int(start)
             else:
-                start = int(start) if start is not None and start != '' else None
-                stop = int(stop) if stop is not None and stop != '' else None
-                step = int(step) if step is not None and step != '' else None
+                start = int(start) if start else None
+                stop = int(stop) if stop else None
+                step = int(step) if step else None
                 index = slice(start, stop, step)
             self.channels[index] = value
 
@@ -81,9 +81,7 @@ if __name__ == '__main__':
                         help='send N channels (default=255)')
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
                         help='show values sent')
-
     args = parser.parse_args()
-
 
     c = Client(args.length, args.server, args.port, universe=args.universe)
     c.parse(*args.chanspec)
