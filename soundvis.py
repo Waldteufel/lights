@@ -1,11 +1,10 @@
 #!/usr/bin/python3
 
-import pyaudio
 import artdmx
 import numpy as np
 import scipy
 import scipy.signal
-
+from gi.repository import GObject, GLib, Gst, Gio
 import argparse
 
 parser = argparse.ArgumentParser(description='Visualize sound over ArtDMX.')
@@ -22,12 +21,6 @@ args = parser.parse_args()
 READ_FRAMES = 1764 // 2
 RATE = 44100
 
-pa = pyaudio.PyAudio()
-stream = pa.open(format=pyaudio.paFloat32, channels=1, rate=RATE,
-                 input=True, input_device_index=None,
-                 frames_per_buffer=READ_FRAMES)
-dmx = artdmx.Client(75, args.server, args.port, universe=args.universe)
-
 buf = np.zeros(dtype=np.float32, shape=2**15)
 upper = 1e-7
 windows = [scipy.signal.hann(2**i) for i in range(17)]
@@ -42,8 +35,14 @@ def my_stft(signal, i):
     res /= 2**i
     return res
 
-while True:
-    ibuf = np.frombuffer(stream.read(READ_FRAMES), dtype=np.float32)
+
+def process_buffer(appsink):
+    global bins, upper
+
+    gst_ibuf = appsink.emit('pull-sample').get_buffer()
+    gst_raw = gst_ibuf.extract_dup(0, gst_ibuf.get_size())
+    ibuf = np.frombuffer(gst_raw, dtype=np.float32)
+    ibuf = ibuf[-len(buf):]  # drop samples if there are too many
     buf[:-len(ibuf)] = buf[len(ibuf):]
     buf[-len(ibuf):] = ibuf
 
@@ -65,3 +64,35 @@ while True:
 
     dmx.channels[:] = 50 + bins[:75] * 200
     dmx.push()
+
+    return False
+
+GObject.threads_init()
+GLib.set_application_name('Sound Visualization')
+Gst.init(None)
+dmx = artdmx.Client(75, args.server, args.port, universe=args.universe)
+pipeline = Gst.parse_launch('pulsesrc ! appsink name=sink ' +
+                            'emit-signals=True ' +
+                            'caps=audio/x-raw,format=F32LE,channels=1')
+appsink = pipeline.get_by_name('sink')
+appsink.connect('new-sample', process_buffer)
+
+
+def masks_changed(monitor, file1, file2, ev):
+    if ev != Gio.FileMonitorEvent.CHANGES_DONE_HINT:
+        return
+
+    if '1' in open('/dev/shm/dmxmasks').readlines()[args.universe]:
+        pipeline.set_state(Gst.State.PLAYING)
+    else:
+        pipeline.set_state(Gst.State.PAUSED)
+
+    return False
+
+
+masks_file = Gio.File.new_for_path('/dev/shm/dmxmasks')
+monitor = masks_file.monitor_file(Gio.FileMonitorFlags.NONE, None)
+monitor.connect("changed", masks_changed)
+masks_changed(None, None, None, Gio.FileMonitorEvent.CHANGES_DONE_HINT)
+
+GObject.MainLoop().run()
