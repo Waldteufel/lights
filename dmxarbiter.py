@@ -51,9 +51,17 @@ dump_masks()
 while True:
     serv.recv_into(recv_buf)
     u = int(recv_header['universe'])
+    c, u = u & 0xf000, u & 0x0fff
 
-    if u >= 0x8000:
-        masks[:, u & 0x7fff] = recv_channels > 0
+    if c & 0x8000:
+        if c == 0x8000:
+            masks[:, u] = recv_channels
+        elif c == 0xa000:  # think "alternate"
+            masks[:, u] ^= recv_channels
+        elif c == 0xc000:  # think "combine"
+            masks[:, u] |= recv_channels
+        elif c == 0xd000:  # think "delete"
+            masks[:, u] &= ~recv_channels
         heads[:] = np.argmax(masks, axis=1)
         dump_masks()
     else:
