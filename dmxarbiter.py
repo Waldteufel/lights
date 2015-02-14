@@ -39,6 +39,15 @@ heads = np.zeros(shape=MAXCH, dtype='u2')
 channels = np.zeros(shape=(MAXCH, UNIVERSES), dtype='u1')
 RANGE = np.arange(MAXCH)
 
+
+def dump_masks():
+    with open('/dev/shm/dmxmasks', 'wb') as f:
+        for i in range(UNIVERSES):
+            np.savetxt(f, masks[:, i], newline='', fmt='%1d')
+            f.write(b'\n')
+
+
+dump_masks()
 while True:
     serv.recv_into(recv_buf)
     u = int(recv_header['universe'])
@@ -46,10 +55,7 @@ while True:
     if u >= 0x8000:
         masks[:, u & 0x7fff] = recv_channels > 0
         heads[:] = np.argmax(masks, axis=1)
-        with open('/dev/shm/dmxmasks', 'wb') as f:
-            for i in range(UNIVERSES):
-                np.savetxt(f, masks[:, i], newline='', fmt='%1d')
-                f.write(b'\n')
+        dump_masks()
     else:
         channels[:, u] = recv_channels
 
