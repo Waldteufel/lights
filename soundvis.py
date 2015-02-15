@@ -78,21 +78,15 @@ appsink = pipeline.get_by_name('sink')
 appsink.connect('new-sample', process_buffer)
 
 
-def masks_changed(monitor, file1, file2, ev):
-    if ev != Gio.FileMonitorEvent.CHANGES_DONE_HINT:
-        return
-
-    if '1' in open('/dev/shm/dmxmasks').readlines()[args.universe]:
+def check_masks():
+    if dmxmasks[0, args.universe]:
         pipeline.set_state(Gst.State.PLAYING)
     else:
         pipeline.set_state(Gst.State.PAUSED)
+    return True
 
-    return False
-
-
-masks_file = Gio.File.new_for_path('/dev/shm/dmxmasks')
-monitor = masks_file.monitor_file(Gio.FileMonitorFlags.NONE, None)
-monitor.connect("changed", masks_changed)
-masks_changed(None, None, None, Gio.FileMonitorEvent.CHANGES_DONE_HINT)
+dmxmasks = np.memmap('/dev/shm/dmxmasks', mode='r',
+                     shape=(1, args.universe+1), dtype=bool)
+GLib.timeout_add_seconds(1, check_masks)
 
 GObject.MainLoop().run()
