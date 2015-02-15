@@ -6,6 +6,8 @@ import socket
 import numpy
 
 
+# Credit: Art-Net™ Designed by and Copyright Artistic Licence Holdings Ltd
+
 HEADER = numpy.dtype([
     ('ident', 'a8'),
     ('opcode', '<u2'),
