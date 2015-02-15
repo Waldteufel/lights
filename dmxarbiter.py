@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import os
 import socket
 import numpy as np
 import artdmx
@@ -7,6 +8,7 @@ import time
 
 MAXCH = 76
 UNIVERSES = 16
+RANGE = np.arange(MAXCH)
 
 serv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 serv.bind(('', 6454))
@@ -33,21 +35,15 @@ mapping = np.roll(mapping, 30)
 # add the garden gnome as channel 75
 mapping = np.concatenate((mapping, [64]))
 
-masks = np.zeros(shape=(MAXCH, UNIVERSES), dtype=bool)
+open('/dev/shm/dmxmasks', 'a').close()
+masks = np.memmap('/dev/shm/dmxmasks', mode='r+', shape=(MAXCH, UNIVERSES), dtype=bool)
+
 heads = np.zeros(shape=MAXCH, dtype='u2')
+heads[:] = np.argmax(masks, axis=1)
 
-channels = np.zeros(shape=(MAXCH, UNIVERSES), dtype='u1')
-RANGE = np.arange(MAXCH)
+open('/dev/shm/dmxchannels', 'a').close()
+channels = np.memmap('/dev/shm/dmxchannels', mode='r+', shape=(MAXCH, UNIVERSES), dtype='u1')
 
-
-def dump_masks():
-    with open('/dev/shm/dmxmasks', 'wb') as f:
-        for i in range(UNIVERSES):
-            np.savetxt(f, masks[:, i], newline='', fmt='%1d')
-            f.write(b'\n')
-
-
-dump_masks()
 while True:
     serv.recv_into(recv_buf)
     u = int(recv_header['universe'])
@@ -62,8 +58,9 @@ while True:
             masks[:, u] |= recv_channels
         elif c == 0xd000:  # think "delete"
             masks[:, u] &= ~recv_channels
+        elif c == 0xf000:  # think "force"
+            pass
         heads[:] = np.argmax(masks, axis=1)
-        dump_masks()
     else:
         channels[:, u] = recv_channels
 
