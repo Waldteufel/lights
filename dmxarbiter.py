@@ -36,13 +36,15 @@ mapping = np.roll(mapping, 30)
 mapping = np.concatenate((mapping, [64]))
 
 open('/dev/shm/dmxmasks', 'a').close()
-masks = np.memmap('/dev/shm/dmxmasks', mode='r+', shape=(MAXCH, UNIVERSES), dtype=bool)
+masks = np.memmap('/dev/shm/dmxmasks', mode='r+',
+                  shape=(MAXCH, UNIVERSES), dtype=bool)
 
 heads = np.zeros(shape=MAXCH, dtype='u2')
 heads[:] = np.argmax(masks, axis=1)
 
 open('/dev/shm/dmxchannels', 'a').close()
-channels = np.memmap('/dev/shm/dmxchannels', mode='r+', shape=(MAXCH, UNIVERSES), dtype='u1')
+channels = np.memmap('/dev/shm/dmxchannels', mode='r+',
+                     shape=(MAXCH, UNIVERSES), dtype='u1')
 
 while True:
     serv.recv_into(recv_buf)
