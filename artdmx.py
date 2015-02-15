@@ -79,8 +79,8 @@ if __name__ == '__main__':
                         help='server (default=localhost)')
     parser.add_argument('-p', '--port', metavar='PORT', type=int,
                         default=6454, help='udp port (default=6454)')
-    parser.add_argument('-l', '--length', metavar='N', default=255, type=int,
-                        help='send N channels (default=255)')
+    parser.add_argument('-l', '--length', metavar='N', default=512, type=int,
+                        help='send N channels (default=512)')
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
                         help='show values sent')
     args = parser.parse_args()
