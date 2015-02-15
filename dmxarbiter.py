@@ -49,22 +49,23 @@ channels = np.memmap('/dev/shm/dmxchannels', mode='r+',
 while True:
     serv.recv_into(recv_buf)
     u = int(recv_header['universe'])
+    l = int(recv_header['length'])
     c, u = u & 0xf000, u & 0x0fff
 
     if c & 0x8000:
         if c == 0x8000:
-            masks[:, u] = recv_channels
+            masks[:l, u] = recv_channels[:l]
         elif c == 0xa000:  # think "alternate"
-            masks[:, u] ^= recv_channels
+            masks[:l, u] ^= recv_channels[:l]
         elif c == 0xc000:  # think "combine"
-            masks[:, u] |= recv_channels
+            masks[:l, u] |= recv_channels[:l]
         elif c == 0xd000:  # think "delete"
-            masks[:, u] &= ~recv_channels
+            masks[:l, u] &= ~recv_channels[:l]
         elif c == 0xf000:  # think "force"
             pass
         heads[:] = np.argmax(masks, axis=1)
     else:
-        channels[:, u] = recv_channels
+        channels[:l, u] = recv_channels[:l]
 
     client.channels[mapping] = channels[RANGE, heads]
     client.push()
