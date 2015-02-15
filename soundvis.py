@@ -79,14 +79,13 @@ appsink.connect('new-sample', process_buffer)
 
 
 def check_masks():
-    if dmxmasks[0, args.universe]:
+    if dmxmasks[args.universe]:
         pipeline.set_state(Gst.State.PLAYING)
     else:
         pipeline.set_state(Gst.State.PAUSED)
     return True
 
-dmxmasks = np.memmap('/dev/shm/dmxmasks', mode='r',
-                     shape=(1, args.universe+1), dtype=bool)
+dmxmasks = np.memmap('/dev/shm/dmxmasks', mode='r', dtype=bool)
 GLib.timeout_add_seconds(1, check_masks)
 
 GObject.MainLoop().run()

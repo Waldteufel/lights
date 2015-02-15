@@ -17,14 +17,13 @@ parser.add_argument('-p', '--port', metavar='PORT', default=6454, type=int,
 args = parser.parse_args()
 
 dmx = artdmx.Client(75, args.server, args.port, universe=args.universe)
-dmxmasks = np.memmap('/dev/shm/dmxmasks', mode='r',
-                     shape=(1, args.universe+1), dtype=bool)
+dmxmasks = np.memmap('/dev/shm/dmxmasks', mode='r', dtype=bool)
 
 S = L = 0.5
 t0 = time.time()
 
 while True:
-    if dmxmasks[0, args.universe]:
+    if dmxmasks[args.universe]:
         for c in range(25):
             h = (time.time() - t0)/5 + c/25
             r, g, b = colorsys.hls_to_rgb(h, S, L)
