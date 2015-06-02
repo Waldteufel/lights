@@ -71,7 +71,7 @@ GObject.threads_init()
 GLib.set_application_name('Sound Visualization')
 Gst.init(None)
 dmx = artdmx.Client(75, args.server, args.port, universe=args.universe)
-pipeline = Gst.parse_launch('pulsesrc ! appsink name=sink ' +
+pipeline = Gst.parse_launch('pulsesrc ! appsink name=sink max-buffers=1 ' +
                             'emit-signals=True ' +
                             'caps=audio/x-raw,format=F32LE,channels=1')
 appsink = pipeline.get_by_name('sink')
