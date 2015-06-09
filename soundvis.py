@@ -36,6 +36,7 @@ upper = 1e-7
 def process_buffer(appsink):
     global bins, upper
 
+    # get samples from gstreamer
     gst_ibuf = appsink.emit('pull-sample').get_buffer()
     gst_raw = gst_ibuf.extract_dup(0, gst_ibuf.get_size())
     ibuf = np.frombuffer(gst_raw, dtype=np.float32)
@@ -43,9 +44,11 @@ def process_buffer(appsink):
     # drop samples if there are too many
     ibuf = ibuf[-len(buf):]
 
+    # write samples to ring buffer
     buf[:-len(ibuf)] = buf[len(ibuf):]
     buf[-len(ibuf):] = ibuf
 
+    # clear bins
     bins[:] = 0
     for (k, w) in windows.items():
         # decompose buffer into frequency components
@@ -62,17 +65,24 @@ def process_buffer(appsink):
     #
     #    if (bins[i] > 1.25 * bin_buf[i])
     #       // take new (higher) value
-    #       bins[i] = bins[i];
+    #       bin_buf[i] = bins[i];
     #    else if (bins[i] < 0.75 * bin_buf[i])
     #       // slowly fade to lower values
-    #       bins[i] = 0.95 * bin_buf[i];
+    #       bin_buf[i] = 0.95 * bin_buf[i];
     #    else
     #       // keep old value
-    #       bins[i] = bin_buf[i];
+    #       bin_buf[i] = bin_buf[i];
 
-    bins = np.where(bins > 1.25*bin_buf, bins,
-                    np.where(bins < 0.75*bin_buf, 0.95*bin_buf, bin_buf))
-    bin_buf[:] = bins
+    bin_buf[:] = np.where(bins > 1.25 * bin_buf,
+                          bins,
+                          np.where(bins < 0.75 * bin_buf,
+                                   0.95 * bin_buf,
+                                   bin_buf))
+
+    # the following operations should not affect the
+    # smoothing logic in the next step, so copy back
+    # the values to use bins as a temporary variable
+    bins[:] = bin_buf
 
     # let upper follow max(bins) smoothly ("low-pass filter")
     upper = 0.995 * upper + 0.005 * max(bins)
@@ -80,6 +90,7 @@ def process_buffer(appsink):
         bins /= upper
     np.clip(bins, 0, 1, out=bins)
 
+    # send out the color channels
     dmx.channels[:] = 50 + bins * 200
     dmx.push()
 
