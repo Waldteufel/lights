@@ -14,6 +14,7 @@ parser.add_argument('-s', '--server', metavar='HOST', default='localhost',
                     type=str, help='server (default=localhost)')
 parser.add_argument('-p', '--port', metavar='PORT', default=6454, type=int,
                     help='udp port (default=6454)')
+parser.add_argument('-f', '--force', dest='force', action='store_true', default=False)
 
 args = parser.parse_args()
 
@@ -85,7 +86,10 @@ def check_masks():
         pipeline.set_state(Gst.State.PAUSED)
     return True
 
-dmxmasks = np.memmap('/dev/shm/dmxmasks', mode='r', dtype=bool)
-GLib.timeout_add_seconds(1, check_masks)
+if args.force:
+    pipeline.set_state(Gst.State.PLAYING)
+else:
+    dmxmasks = np.memmap('/dev/shm/dmxmasks', mode='r', dtype=bool)
+    GLib.timeout_add_seconds(1, check_masks)
 
 GObject.MainLoop().run()
