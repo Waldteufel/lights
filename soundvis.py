@@ -18,24 +18,17 @@ parser.add_argument('-f', '--force', dest='force', action='store_true', default=
 
 args = parser.parse_args()
 
+SAMPLE_RATE = 44100
+MAXP = 15  # keep 2**MAXP samples in a ring buffer
+MAXOUT = 75  # number of output channels
 
-READ_FRAMES = 1764 // 2
-RATE = 44100
+windows = {k: scipy.signal.hann(2**k) for k in range(8, MAXP)}
+freqs = 440 * 2 ** (np.arange(MAXOUT)/12 - 3) / SAMPLE_RATE
 
-buf = np.zeros(dtype=np.float32, shape=2**15)
+buf = np.zeros(shape=2**MAXP, dtype=np.float32)
+bins = np.zeros(shape=MAXOUT, dtype=np.float32)
+bin_buf = np.zeros(shape=MAXOUT, dtype=np.float32)
 upper = 1e-7
-windows = [scipy.signal.hann(2**i) for i in range(17)]
-freqs = 440 * 2 ** (np.arange(-3*12, 4*12)/12) * len(buf) / RATE
-
-bins = np.zeros(shape=7*12, dtype=np.float32)
-bin_buf = np.zeros(shape=7*12, dtype=np.float32)
-
-
-def my_stft(signal, i):
-    res = abs(np.fft.rfft(signal[-2**i:] * windows[i])[1:])
-    res /= 2**i
-    return res
-
 
 def process_buffer(appsink):
     global bins, upper
@@ -48,11 +41,11 @@ def process_buffer(appsink):
     buf[-len(ibuf):] = ibuf
 
     bins[:] = 0
-    for k in range(0, 8):
-        tmp = my_stft(buf, 15-k)
+    for (k, w) in windows.items():
+        tmp = abs(np.fft.rfft(buf[-2**k:] * w)[1:])
+        tmp /= 2**k
         tmp[:20] = 0  # cut off low frequencies
-        bins += tmp[(freqs / 2**k).astype(int)]
-    bins[75:] = 0  # ignore out-of-range channels
+        bins += tmp[(freqs * 2**k).astype(int)]
 
     bins = np.where(bins > 1.25*bin_buf, bins,
                     np.where(bins < 0.75*bin_buf, 0.95*bin_buf, bin_buf))
@@ -63,7 +56,7 @@ def process_buffer(appsink):
         bins /= upper
     np.clip(bins, 0, 1, out=bins)
 
-    dmx.channels[:] = 50 + bins[:75] * 200
+    dmx.channels[:] = 50 + bins * 200
     dmx.push()
 
     return False
@@ -71,10 +64,10 @@ def process_buffer(appsink):
 GObject.threads_init()
 GLib.set_application_name('Sound Visualization')
 Gst.init(None)
-dmx = artdmx.Client(75, args.server, args.port, universe=args.universe)
+dmx = artdmx.Client(MAXOUT, args.server, args.port, universe=args.universe)
 pipeline = Gst.parse_launch('pulsesrc ! appsink name=sink max-buffers=1 ' +
                             'emit-signals=True ' +
-                            'caps=audio/x-raw,format=F32LE,channels=1')
+                            'caps=audio/x-raw,format=F32LE,channels=1,rate={}'.format(SAMPLE_RATE))
 appsink = pipeline.get_by_name('sink')
 appsink.connect('new-sample', process_buffer)
 
