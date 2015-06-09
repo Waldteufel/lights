@@ -23,6 +23,9 @@ MAXP = 15  # keep 2**MAXP samples in a ring buffer
 MAXOUT = 75  # number of output channels
 
 windows = {k: scipy.signal.hann(2**k) for k in range(8, MAXP)}
+
+# int(freqs[k] * 2**n) is the index for semitone k
+# in the result of a rfft for a buffer of size n
 freqs = 440 * 2 ** (np.arange(MAXOUT)/12 - 3) / SAMPLE_RATE
 
 buf = np.zeros(shape=2**MAXP, dtype=np.float32)
