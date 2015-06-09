@@ -14,15 +14,18 @@ parser.add_argument('-s', '--server', metavar='HOST', default='localhost',
                     type=str, help='server (default=localhost)')
 parser.add_argument('-p', '--port', metavar='PORT', default=6454, type=int,
                     help='udp port (default=6454)')
-parser.add_argument('-f', '--force', dest='force', action='store_true', default=False)
+parser.add_argument('-f', '--force', dest='force', action='store_true',
+                    default=False, help='ignore dmxmasks')
 
 args = parser.parse_args()
 
 SAMPLE_RATE = 44100
+MINP = 8   # analyze at least 2**MINP samples at once
 MAXP = 15  # keep 2**MAXP samples in a ring buffer
 MAXOUT = 75  # number of output channels
 
-windows = {k: scipy.signal.hann(2**k) for k in range(8, MAXP)}
+# precomputed windowing functions for several time-scales
+windows = {k: scipy.signal.hann(2**k) for k in range(MINP, MAXP)}
 
 # int(freqs[k] * 2**n) is the index for semitone k
 # in the result of a rfft for a buffer of size n
@@ -30,11 +33,13 @@ freqs = 440 * 2 ** (np.arange(MAXOUT)/12 - 3) / SAMPLE_RATE
 
 buf = np.zeros(shape=2**MAXP, dtype=np.float32)
 bins = np.zeros(shape=MAXOUT, dtype=np.float32)
-bin_buf = np.zeros(shape=MAXOUT, dtype=np.float32)
-upper = 1e-7
+
+smooth_bins = np.zeros(shape=MAXOUT, dtype=np.float32)
+smooth_maximum = 1e-7
+
 
 def process_buffer(appsink):
-    global bins, upper
+    global bins, smooth_maximum
 
     # get samples from gstreamer
     gst_ibuf = appsink.emit('pull-sample').get_buffer()
@@ -50,6 +55,8 @@ def process_buffer(appsink):
 
     # clear bins
     bins[:] = 0
+
+    # analyze frequencies on multiple time-scales
     for (k, w) in windows.items():
         # decompose buffer into frequency components
         tmp = abs(np.fft.rfft(buf[-2**k:] * w)[1:])
@@ -63,31 +70,34 @@ def process_buffer(appsink):
 
     # the np.where(...) below is equivalent to
     #
-    #    if (bins[i] > 1.25 * bin_buf[i])
+    #    if (bins[i] > 1.25 * smooth_bins[i])
     #       // take new (higher) value
-    #       bin_buf[i] = bins[i];
-    #    else if (bins[i] < 0.75 * bin_buf[i])
+    #       smooth_bins[i] = bins[i];
+    #    else if (bins[i] < 0.75 * smooth_bins[i])
     #       // slowly fade to lower values
-    #       bin_buf[i] = 0.95 * bin_buf[i];
+    #       smooth_bins[i] = 0.95 * smooth_bins[i];
     #    else
     #       // keep old value
-    #       bin_buf[i] = bin_buf[i];
+    #       smooth_bins[i] = smooth_bins[i];
 
-    bin_buf[:] = np.where(bins > 1.25 * bin_buf,
-                          bins,
-                          np.where(bins < 0.75 * bin_buf,
-                                   0.95 * bin_buf,
-                                   bin_buf))
+    smooth_bins[:] = np.where(bins > 1.25 * smooth_bins,
+                              bins,
+                              np.where(bins < 0.75 * smooth_bins,
+                                       0.95 * smooth_bins,
+                                       smooth_bins))
 
-    # the following operations should not affect the
-    # smoothing logic in the next step, so copy back
-    # the values to use bins as a temporary variable
-    bins[:] = bin_buf
+    # the following normalization shall not affect the
+    # smoothing logic when the next samples arrive, so
+    # use bins for a temporary copy of smooth_bins
+    bins[:] = smooth_bins
 
-    # let upper follow max(bins) smoothly ("low-pass filter")
-    upper = 0.995 * upper + 0.005 * max(bins)
-    if upper != 0:
-        bins /= upper
+    # let smooth_maximum follow max(bins) smoothly ("low-pass filter")
+    smooth_maximum = 0.995 * smooth_maximum + 0.005 * max(bins)
+    if smooth_maximum != 0:
+        bins /= smooth_maximum
+
+    # since we used a time-smoothened maximum, the normalization
+    # is not perfect and we have to clip our results
     np.clip(bins, 0, 1, out=bins)
 
     # send out the color channels
@@ -96,13 +106,17 @@ def process_buffer(appsink):
 
     return False
 
+
 GObject.threads_init()
 GLib.set_application_name('Sound Visualization')
 Gst.init(None)
+
 dmx = artdmx.Client(MAXOUT, args.server, args.port, universe=args.universe)
-pipeline = Gst.parse_launch('pulsesrc ! appsink name=sink max-buffers=1 ' +
-                            'emit-signals=True ' +
-                            'caps=audio/x-raw,format=F32LE,channels=1,rate={}'.format(SAMPLE_RATE))
+pipeline = Gst.parse_launch("""
+    pulsesrc !
+    appsink name=sink max-buffers=1 emit-signals=True
+        caps=audio/x-raw,format=F32LE,channels=1,rate={}
+""".format(SAMPLE_RATE))
 appsink = pipeline.get_by_name('sink')
 appsink.connect('new-sample', process_buffer)
 
