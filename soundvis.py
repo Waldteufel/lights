@@ -39,21 +39,42 @@ def process_buffer(appsink):
     gst_ibuf = appsink.emit('pull-sample').get_buffer()
     gst_raw = gst_ibuf.extract_dup(0, gst_ibuf.get_size())
     ibuf = np.frombuffer(gst_raw, dtype=np.float32)
-    ibuf = ibuf[-len(buf):]  # drop samples if there are too many
+
+    # drop samples if there are too many
+    ibuf = ibuf[-len(buf):]
+
     buf[:-len(ibuf)] = buf[len(ibuf):]
     buf[-len(ibuf):] = ibuf
 
     bins[:] = 0
     for (k, w) in windows.items():
+        # decompose buffer into frequency components
         tmp = abs(np.fft.rfft(buf[-2**k:] * w)[1:])
         tmp /= 2**k
-        tmp[:20] = 0  # cut off low frequencies
+
+        # cut off low frequencies
+        tmp[:20] = 0
+
+        # pick frequencies for each semitone and accumulate
         bins += tmp[(freqs * 2**k).astype(int)]
+
+    # the np.where(...) below is equivalent to
+    #
+    #    if (bins[i] > 1.25 * bin_buf[i])
+    #       // take new (higher) value
+    #       bins[i] = bins[i];
+    #    else if (bins[i] < 0.75 * bin_buf[i])
+    #       // slowly fade to lower values
+    #       bins[i] = 0.95 * bin_buf[i];
+    #    else
+    #       // keep old value
+    #       bins[i] = bin_buf[i];
 
     bins = np.where(bins > 1.25*bin_buf, bins,
                     np.where(bins < 0.75*bin_buf, 0.95*bin_buf, bin_buf))
     bin_buf[:] = bins
 
+    # let upper follow max(bins) smoothly ("low-pass filter")
     upper = 0.995 * upper + 0.005 * max(bins)
     if upper != 0:
         bins /= upper
