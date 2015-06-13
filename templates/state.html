@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<title>Trollhöhlen-Licht</title>
+		<style>
+			/* apply a natural box layout model to all elements */
+			*, *:before, *:after { box-sizing: border-box; }
+
+			/* center content */
+			html, body { width: 100%; height: 100%; padding: 0; margin: 0 }
+			body { display: flex; flex-direction: column;
+				justify-content: center; align-items: center }
+
+			canvas#universes { box-shadow: 1px 1px 2px #777; margin-top: 1rem }
+			div { background: lightgray; border-radius: .5rem; padding: 1rem }
+		</style>
+	</head>
+	<body>
+		<div>
+			top-most non-masked color wins<br>
+			<canvas id="universes">[No Canvas Support!]</canvas>
+		</div>
+
+		<script>
+			var data = {masks: null, channels: null, universes: null, maskPattern: null};
+
+			var W = 24;
+			var H = 24;
+
+			var canvas = document.getElementById("universes");
+			var ctx = canvas.getContext("2d");
+
+			var maskImage = new Image();
+			maskImage.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFUlEQVQImWNgwAb+AwGIQhf7j1U1AFACCfdQmJdpAAAAAElFTkSuQmCC';
+			maskImage.onload = function() {
+				data.maskPattern = ctx.createPattern(maskImage, "repeat");
+				drawData();
+			};
+
+			function drawData() {
+				if (data.masks === null) return;
+				if (data.channels === null) return;
+				if (data.maskPattern === null) return;
+
+				canvas.width = 26 * W;
+				canvas.height = data.universes * H;
+
+				for (var u = 0; u < data.universes; ++u) {
+					for (var c = 0; c < 25; ++c) {
+						var r = data.channels[data.universes*(3*c + 0) + u];
+						var g = data.channels[data.universes*(3*c + 1) + u];
+						var b = data.channels[data.universes*(3*c + 2) + u];
+						ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+						ctx.fillRect(c * W, u * H, W, H);
+
+						var mask_r = data.masks[data.universes*(3*c + 0) + u];
+						var mask_g = data.masks[data.universes*(3*c + 1) + u];
+						var mask_b = data.masks[data.universes*(3*c + 2) + u];
+						if (mask_r == 0 && mask_g == 0 && mask_b == 0) {
+							ctx.fillStyle = data.maskPattern;
+							ctx.fillRect(c * W, u * H, W, H);
+						}
+					}
+
+					var gnome = data.channels[data.universes*75 + u];
+					ctx.fillStyle = 'rgb(' + gnome + ',' + gnome + ',0)';
+					ctx.fillRect(25 * W, u * H, W, H);
+					var gnome_mask = data.masks[data.universes*75 + u];
+					if (gnome_mask == 0) {
+						ctx.fillStyle = data.maskPattern;
+						ctx.fillRect(c * W, u * H, W, H);
+					}
+				}
+
+				setTimeout(update, 100);
+			}
+
+			function update() {
+				data.masks = data.channels = null;
+
+				var masksReq = new XMLHttpRequest();
+				masksReq.open("get", "masks", true);
+				masksReq.responseType = "arraybuffer";
+
+				var channelsReq = new XMLHttpRequest();
+				channelsReq.open("get", "channels", true);
+				channelsReq.responseType = "arraybuffer";
+
+				masksReq.onload = function() {
+					var arrayBuffer = masksReq.response;
+					if (arrayBuffer) {
+						data.masks = new Uint8Array(arrayBuffer);
+						data.universes = parseInt(masksReq.getResponseHeader("X-UNIVERSES"));
+						drawData();
+					}
+				};
+
+				channelsReq.onload = function() {
+					var arrayBuffer = channelsReq.response;
+					if (arrayBuffer) {
+						data.channels = new Uint8Array(arrayBuffer);
+						data.universes = parseInt(channelsReq.getResponseHeader("X-UNIVERSES"));
+						drawData();
+					}
+				};
+
+				masksReq.send();
+				channelsReq.send();
+			}
+
+			update();
+		</script>
+	</body>
+</html>

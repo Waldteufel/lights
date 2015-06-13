@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<title>Trollhöhlen-Licht</title>
+		<style>
+			/* apply a natural box layout model to all elements */
+			*, *:before, *:after { box-sizing: border-box; }
+
+			/* center content */
+			html, body { width: 100%; height: 100%; padding: 0; margin: 0 }
+			body { display: flex; flex-direction: column;
+				justify-content: center; align-items: center }
+
+			form { display: inline-block }
+
+			h1 { padding: 0; margin: 0 }
+			#universes { margin: .5rem }
+			#universes .id { font-family: monospace }
+			#universes .title { width: 12rem }
+			#universes td { text-align: center; height: 2rem; vertical-align: middle }
+
+			button { width: 3rem; border: 1px solid gray; border-radius: 3px; font-size: .8rem; background: Snow; color: #111 }
+			button:disabled { color:#888 }
+			button.white { background: rgb(255, 255, 190) }
+			button.black { border:1px solid #111; background: #111; color: Snow }
+
+			button.toggle.Off { background: linear-gradient(Snow, Silver) }
+			button.toggle.On { background: linear-gradient(Silver, Snow); font-weight: bold }
+		</style>
+	</head>
+	<body>
+		<div style="text-align: center; background: lightgray; padding: 1rem; border-radius: .5rem"><a href="https://github.com/Waldteufel/lights">/home/lights/lights</a> | <a href="/lights/state">/dev/shm/dmx{masks,channels}</a> | <a href="/doc/lights">/root/doc/lights</a><br>use artdmx.py for ‘expert mode’ | read the source, it's not much!</div>
+		<table id="universes">
+			<tr>
+				<td class="id">[0]</td>
+				<td class="title">Cinema Mode</td>
+				<td>
+					<form method="POST">
+						<input type="hidden" name="0x0000" value="0:15=0">
+						<input type="hidden" name="0xa000" value="0:15=1">
+						<button type="submit" class="toggle {{ check_mask(0, 0) }}">{{ check_mask(0, 0) }}</button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td class="id">[1]</td>
+				<td class="title">Doorbell</td>
+				<td><button disabled>(auto)</button></td>
+			</tr>
+			<tr>
+				<td class="id">[2]</td>
+				<td class="title">Work Light</td>
+				<td>
+					<form method="POST">
+						<input type="hidden" name="0x0002" value=":=255 2::3=190">
+						<input type="hidden" name="0xa002" value="15:45=1">
+						<button type="submit" class="toggle {{ check_mask(2, 15) }}">Desk</button>
+					</form>
+					<form method="POST">
+						<input type="hidden" name="0x0002" value=":=255 2::3=190">
+						<input type="hidden" name="0xa002" value="0:15=1 60:75=1">
+						<button type="submit" class="toggle {{ check_mask(2, 60) }}">Sofa</button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td class="id">[3]</td>
+				<td class="title">Chill Light</td>
+				<td>
+					<form method="POST">
+						<input type="hidden" name="0x0003" value=":=127 2::3=95">
+						<input type="hidden" name="0xa003" value="15:45=1">
+						<button type="submit" class="toggle {{ check_mask(3, 15) }}">Desk</button>
+					</form>
+					<form method="POST">
+						<input type="hidden" name="0x0003" value=":=127 2::3=95">
+						<input type="hidden" name="0xa003" value="0:15=1 60:75=1">
+						<button type="submit" class="toggle {{ check_mask(3, 60) }}">Sofa</button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td class="id">[A]</td>
+				<td class="title"><i>soundvis</i></td>
+				<td>
+					<form method="POST">
+						<input type="hidden" name="0xa00a" value="0:75=1">
+						<button type="submit" class="toggle {{ check_mask(10, 0) }}">{{ check_mask(10, 0) }}</button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td class="id">[E]</td>
+				<td class="title">Rainbow</td>
+				<td>
+					<form method="POST">
+						<input type="hidden" name="0xa00e" value=":=1">
+						<button type="submit" class="toggle {{ check_mask(14, 0) }}">{{ check_mask(14, 0) }}</button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td class="id">[F]</td>
+				<td class="title">Fallback</td>
+				<td>
+					<form method="POST">
+						<input type="hidden" name="0x000f" value=":75=255 2:75:3=190">
+						<input type="hidden" name="0x800f" value=":=1">
+						<button type="submit" class="white">White</button>
+					</form>
+					<form method="POST">
+						<input type="hidden" name="0x000f" value=":=0">
+						<input type="hidden" name="0x800f" value=":=1">
+						<button type="submit" class="black">Black</button>
+					</form>
+				</td>
+			</tr>
+		</table>
+	</body>
+</html>
