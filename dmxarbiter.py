@@ -12,6 +12,7 @@ RANGE = np.arange(MAXCH)
 
 serv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 serv.bind(('', 6454))
+serv.settimeout(20)
 
 recv_buf = bytearray(b'\0' * (artdmx.HEADER.itemsize + MAXCH))
 recv_header = np.ndarray(shape=1, dtype=artdmx.HEADER, buffer=recv_buf)
@@ -47,25 +48,28 @@ channels = np.memmap('/dev/shm/dmxchannels', mode='r+',
                      shape=(MAXCH, UNIVERSES), dtype='u1')
 
 while True:
-    serv.recv_into(recv_buf)
-    u = int(recv_header['universe'])
-    l = int(recv_header['length'])
-    c, u = u & 0xf000, u & 0x0fff
+    try:
+        serv.recv_into(recv_buf)
+        u = int(recv_header['universe'])
+        l = int(recv_header['length'])
+        c, u = u & 0xf000, u & 0x0fff
 
-    if c & 0x8000:
-        if c == 0x8000:
-            masks[:l, u] = recv_channels[:l]
-        elif c == 0xa000:  # think "alternate"
-            masks[:l, u] ^= recv_channels[:l]
-        elif c == 0xc000:  # think "combine"
-            masks[:l, u] |= recv_channels[:l]
-        elif c == 0xd000:  # think "delete"
-            masks[:l, u] &= ~recv_channels[:l]
-        elif c == 0xf000:  # think "force"
-            pass
-        heads[:] = np.argmax(masks, axis=1)
-    else:
-        channels[:l, u] = recv_channels[:l]
+        if c & 0x8000:
+            if c == 0x8000:
+                masks[:l, u] = recv_channels[:l]
+            elif c == 0xa000:  # think "alternate"
+                masks[:l, u] ^= recv_channels[:l]
+            elif c == 0xc000:  # think "combine"
+                masks[:l, u] |= recv_channels[:l]
+            elif c == 0xd000:  # think "delete"
+                masks[:l, u] &= ~recv_channels[:l]
+            elif c == 0xf000:  # think "force"
+                pass
+            heads[:] = np.argmax(masks, axis=1)
+        else:
+            channels[:l, u] = recv_channels[:l]
 
-    client.channels[mapping] = channels[RANGE, heads]
+        client.channels[mapping] = channels[RANGE, heads]
+    except socket.timeout:
+        pass
     client.push()
