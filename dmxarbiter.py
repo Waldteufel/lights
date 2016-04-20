@@ -56,13 +56,13 @@ while True:
 
         if c & 0x8000:
             if c == 0x8000:
-                masks[:l, u] = recv_channels[:l]
+                masks[:l, u] = (recv_channels[:l] != 0)
             elif c == 0xa000:  # think "alternate"
-                masks[:l, u] ^= recv_channels[:l]
+                masks[:l, u] ^= (recv_channels[:l] != 0)
             elif c == 0xc000:  # think "combine"
-                masks[:l, u] |= recv_channels[:l]
+                masks[:l, u] |= (recv_channels[:l] != 0)
             elif c == 0xd000:  # think "delete"
-                masks[:l, u] &= ~recv_channels[:l]
+                masks[:l, u] &= ~(recv_channels[:l] != 0)
             elif c == 0xf000:  # think "force"
                 pass
             heads[:] = np.argmax(masks, axis=1)
